@@ -8,7 +8,8 @@ from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart
 from datetime import datetime, timedelta, date
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide",
+                   page_icon="🍉")
 
 # Streamlit UI
 st.title("Options Analysis")
