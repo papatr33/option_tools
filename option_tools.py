@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -5,7 +6,7 @@ import numpy as np
 from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 st.set_page_config(layout="wide")
 
@@ -26,7 +27,9 @@ if page == "Forward Volatility":
     # Fetch data
     forward_matrix, atm_df, current_time = fetch_and_process_data(currency)
 
-    st.write(f"Data fetched at: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    t = current_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    st.write(f"Data fetched at: UTC ", t)
 
     # Display forward volatility matrix
     st.subheader("Forward Volatility Matrix")
@@ -142,17 +145,13 @@ elif page == "VRP":
     with col1:
         start_date = st.date_input(
             "Start Date",
-            value=datetime(2024, 1, 1).date(),
-            min_value=datetime(2020, 1, 1).date(),
-            max_value=datetime(2024, 12, 31).date()
+            value=datetime(2024, 1, 1).date(),           
         )
 
     with col2:
         end_date = st.date_input(
             "End Date",
-            value=datetime(2024, 12, 31).date(),
-            min_value=datetime(2020, 1, 1).date(),
-            max_value=datetime(2024, 12, 31).date()
+            value=date.today(),            
         )
     
     # Convert date_input (datetime.date) to datetime.datetime
