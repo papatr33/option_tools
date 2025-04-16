@@ -33,7 +33,7 @@ def get_dvol_data(currency, start_timestamp, end_timestamp, resolution):
 
 # Function to fetch Binance OHLC data using public API
 def get_binance_data(symbol, start_date, end_date):
-    url = "https://api.binance.com/api/v3/klines"
+    url = "https://api.binance.us/api/v3/klines"
     start_ts = int(start_date.timestamp() * 1000)
     end_ts = int(end_date.timestamp() * 1000)
     params = {
