@@ -3,10 +3,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+from datetime import datetime, timedelta, date
 from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart
-from datetime import datetime, timedelta, date
+from corr import plot_btc_altcoin_correlations
+
 
 st.set_page_config(layout="wide",
                    page_icon="🍉")
@@ -21,7 +23,7 @@ with col1:
     currency = st.selectbox("Select Currency", ["BTC", "ETH"], key="currency_selector")
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices","VRP"])
+page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices","VRP","Correlation Heatmap"])
 
 # Forward Volatility Page
 if page == "Forward Volatility":
@@ -166,3 +168,30 @@ elif page == "VRP":
 
     fig_realized_vrp = create_realized_VRP_chart(start_date=start_date, end_date=end_date, asset = currency)
     st.plotly_chart(fig_realized_vrp, use_container_width=True)
+
+elif page == "Correlation Heatmap":
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        start_date = st.date_input(
+            "Start Date",
+            value=datetime(2024, 1, 1).date(),           
+        )
+
+    with col2:
+        end_date = st.date_input(
+            "End Date",
+            value=date.today(),            
+        )
+    
+    with col3:
+        max_lookback = st.number_input('Max Lookback Days', value = 100)
+
+    fig1, fig2 = plot_btc_altcoin_correlations(start_date, end_date, max_lookback=100)
+
+    st.plotly_chart(fig1, use_container_width=True)
+
+    st.divider()
+
+    st.plotly_chart(fig2, use_container_width=True)
