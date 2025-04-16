@@ -1,4 +1,3 @@
-# forward_volatility.py
 import requests
 import pandas as pd
 from datetime import datetime
@@ -25,20 +24,32 @@ def fetch_and_process_data(currency):
     Returns:
         tuple: (forward_matrix, atm_df, current_time)
     """
+    # Validate currency
+    if currency not in ['BTC', 'ETH']:
+        raise ValueError("Currency must be 'BTC' or 'ETH'")
+
     # Fetch server time and index price
     server_time_resp = call_api("get_time", {})
+    if 'result' not in server_time_resp:
+        raise Exception("Failed to fetch server time")
     server_time = server_time_resp['result']
     current_time = datetime.fromtimestamp(server_time / 1000)
 
     index_price_resp = call_api("get_index_price", {"index_name": f"{currency.lower()}_usd"})
+    if 'result' not in index_price_resp:
+        raise Exception(f"Failed to fetch index price for {currency}")
     underlying_price = index_price_resp['result']['index_price']
 
     # Fetch options data
     instruments_resp = call_api("get_instruments", {"currency": currency, "kind": "option"})
+    if 'result' not in instruments_resp:
+        raise Exception(f"Failed to fetch instruments for {currency}")
     instruments = instruments_resp['result']
     instrument_dict = {inst['instrument_name']: inst for inst in instruments}
 
     book_summary_resp = call_api("get_book_summary_by_currency", {"currency": currency, "kind": "option"})
+    if 'result' not in book_summary_resp:
+        raise Exception(f"Failed to fetch book summary for {currency}")
     book_summary = book_summary_resp['result']
 
     # Collect options data
@@ -60,13 +71,17 @@ def fetch_and_process_data(currency):
                     'instrument_name': inst_name
                 })
 
+    if not options_data:
+        raise Exception(f"No valid options data found for {currency}")
+
     # Convert to DataFrame and find ATM IVs
     df = pd.DataFrame(options_data)
     grouped = df.groupby('expiry')
     atm_ivs = []
     for expiry in sorted(df['expiry'].unique()):
-        group = grouped.get_group(expiry)
-        group['strike_diff'] = abs(group['strike'] - underlying_price)
+        group = grouped.get_group(expiry).copy()  # Create a copy to avoid SettingWithCopyWarning
+        # Use .loc to assign new column safely
+        group.loc[:, 'strike_diff'] = abs(group['strike'] - underlying_price)
         min_diff = group['strike_diff'].min()
         atm_options = group[group['strike_diff'] == min_diff]
         call_atm = atm_options[atm_options['option_type'] == 'call']
@@ -77,6 +92,9 @@ def fetch_and_process_data(currency):
                 'time_to_expiry': group['time_to_expiry'].iloc[0],
                 'atm_iv': atm_iv
             })
+
+    if not atm_ivs:
+        raise Exception(f"No ATM IVs calculated for {currency}")
 
     # Create ATM IVs DataFrame and calculate forward vols
     atm_df = pd.DataFrame(atm_ivs).sort_values('expiry')
