@@ -8,7 +8,7 @@ from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart
 from corr import plot_btc_altcoin_correlations
-
+import matplotlib
 
 st.set_page_config(layout="wide",
                    page_icon="🍉")
@@ -86,11 +86,14 @@ if page == "Forward Volatility":
             labels={'dte': 'Days to Expiry', 'atm_iv': 'ATM IV (%)'},
             title=f"{currency} ATM Implied Volatility Curve"
         )
+
+        # Set the line color to your custom color
         iv_fig.update_traces(
             hovertemplate="<b>Days to Expiry:</b> %{x}<br><b>ATM IV:</b> %{y:.2f}%<extra></extra>",
-            line=dict(width=2),
-            marker=dict(size=8)
+            line=dict(width=2, color='#4adaaf'),  # Change color here
+            marker=dict(size=8, color='#4adaaf')  # Optionally, set marker color
         )
+
         iv_fig.update_layout(
             hoverlabel=dict(bgcolor="white", font_size=14),
             height=400,
@@ -100,14 +103,22 @@ if page == "Forward Volatility":
 
     with col2:
 
-        # Display ATM IV table
         atm_display = atm_df[['dte', 'expiry_str', 'atm_iv']].rename(columns={
             'dte': 'Days to Expiry (dte)',
             'expiry_str': 'Expiration Date',
             'atm_iv': 'ATM IV (%)'
         }).round({'ATM IV (%)': 2})
+
+        # 1. Define your custom colormap
+        custom_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            'custom_gradient', ['#009392', '#d0587e']
+        )
+
+        # 2. Apply the custom colormap to your DataFrame style
         styled_df = atm_display.style.format({'ATM IV (%)': '{:.2f}'}) \
-            .background_gradient(subset=['ATM IV (%)'], cmap='RdYlGn_r')
+            .background_gradient(subset=['ATM IV (%)'], cmap=custom_cmap)
+
+        # 3. Display in Streamlit
         st.table(styled_df)
 
 # Straddle Prices Page
