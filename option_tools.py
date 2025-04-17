@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime, timedelta, date
 from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
-from vrp import create_implied_VRP_chart, create_realized_VRP_chart
+from vrp import create_implied_VRP_chart, create_realized_VRP_chart, create_iv_rv_scatter_plot
 from corr import plot_btc_altcoin_correlations
 import matplotlib
 
@@ -179,6 +179,11 @@ elif page == "VRP":
 
     fig_realized_vrp = create_realized_VRP_chart(start_date=start_date, end_date=end_date, asset = currency)
     st.plotly_chart(fig_realized_vrp, use_container_width=True)
+
+    st.divider()
+
+    fig_scatter_vrp = create_iv_rv_scatter_plot(start_date=start_date, end_date=end_date, asset = currency)
+    st.plotly_chart(fig_scatter_vrp, use_container_width=True)
 
 elif page == "Correlation Heatmap":
 
