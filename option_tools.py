@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, date
 from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart, create_iv_rv_scatter_plot
-from corr import plot_btc_altcoin_correlations
+from corr import plot_btc_altcoin_correlations, plot_btc_financial_correlations
 import matplotlib
 
 st.set_page_config(layout="wide",
@@ -211,3 +211,8 @@ elif page == "Correlation Heatmap":
     st.divider()
 
     st.plotly_chart(fig2, use_container_width=True)
+
+    fig3 = plot_btc_financial_correlations(start_date, end_date, lookback=30)
+
+    st.divider()
+    st.plotly_chart(fig3, use_container_width=True)
