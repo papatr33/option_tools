@@ -8,6 +8,7 @@ from forward_volatility import fetch_and_process_data
 from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart, create_iv_rv_scatter_plot
 from corr import plot_btc_altcoin_correlations, plot_btc_financial_correlations
+from spot_vol import calculate_spot_vol_correlation
 import matplotlib
 
 st.set_page_config(layout="wide",
@@ -23,7 +24,7 @@ with col1:
     currency = st.selectbox("Select Currency", ["BTC", "ETH"], key="currency_selector")
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices","VRP","Correlation Heatmap"])
+page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices","VRP","Correlation Heatmap","Spot Vol Correlation"])
 
 # Forward Volatility Page
 if page == "Forward Volatility":
@@ -216,3 +217,18 @@ elif page == "Correlation Heatmap":
 
     st.divider()
     st.plotly_chart(fig3, use_container_width=True)
+
+elif page == "Spot Vol Correlation":
+
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        lookback_days = st.number_input("Lookback days: ", value = 365)
+
+    fig1, fig2 = calculate_spot_vol_correlation(days = lookback_days)
+
+    st.plotly_chart(fig1, use_container_width=False)
+
+    st.divider()
+
+    st.plotly_chart(fig2, use_container_width=True)
