@@ -9,6 +9,7 @@ from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart, create_iv_rv_scatter_plot
 from corr import plot_btc_altcoin_correlations, plot_btc_financial_correlations
 from spot_vol import calculate_spot_vol_correlation
+from rv import create_btc_volatility_chart
 import matplotlib
 
 st.set_page_config(layout="wide",
@@ -24,7 +25,7 @@ with col1:
     currency = st.selectbox("Select Currency", ["BTC", "ETH"], key="currency_selector")
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices","VRP","Correlation Heatmap","Spot Vol Correlation"])
+page = st.sidebar.selectbox("Functions", ["Forward Volatility", "RV", "Straddle Prices","VRP","Correlation Heatmap","Spot Vol Correlation"])
 
 # Forward Volatility Page
 if page == "Forward Volatility":
@@ -218,3 +219,27 @@ elif page == "Spot Vol Correlation":
     st.divider()
 
     st.plotly_chart(fig2, use_container_width=True)
+
+elif page == "RV":
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        start_date = st.date_input(
+            "Start Date",
+            value=datetime(2024, 1, 1).date(),           
+        )
+
+    with col2:
+        end_date = st.date_input(
+            "End Date",
+            value=date.today(),            
+        )
+
+    fig, table_fig = create_btc_volatility_chart(start_date=start_date, end_date=end_date, symbol="BTCUSDT")
+
+    st.plotly_chart(fig)
+
+    st.divider()
+
+    st.plotly_chart(table_fig)
