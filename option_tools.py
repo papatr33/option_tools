@@ -28,99 +28,85 @@ page = st.sidebar.selectbox("Functions", ["Forward Volatility", "Straddle Prices
 
 # Forward Volatility Page
 if page == "Forward Volatility":
-    # Fetch data
     forward_matrix, atm_df, current_time = fetch_and_process_data(currency)
+    if forward_matrix is None or atm_df is None or current_time is None:
+        st.error("Failed to fetch forward volatility data from Deribit API. Please try again later.")
+    else:
+        t = current_time.strftime('%Y-%m-%d %H:%M:%S')
+        st.write(f"Data fetched at: UTC {t}")
 
-    t = current_time.strftime('%Y-%m-%d %H:%M:%S')
-
-    st.write(f"Data fetched at: UTC ", t)
-
-    # Display forward volatility matrix
-    st.subheader("Forward Volatility Matrix")
-
-    display_matrix = forward_matrix.copy()
-    fig = px.imshow(
-        display_matrix,
-        labels=dict(x="End Date", y="Start Date"),
-        color_continuous_scale='Tealrose',
-        color_continuous_midpoint=np.nanmean(display_matrix.values),
-        aspect="auto",
-        text_auto=".2f"
-    )
-    fig.update_layout(
-        coloraxis_showscale=False,
-        coloraxis_cmin=np.nanpercentile(display_matrix.values, 5) if not display_matrix.empty else 0,
-        coloraxis_cmax=np.nanpercentile(display_matrix.values, 95) if not display_matrix.empty else 100,
-        hoverlabel=dict(
-            bgcolor="white",
-            font_size=14,
-            font_family="Arial"
-        ),
-        title=f"{currency} Forward Volatility Matrix",
-        xaxis_title="End Date",
-        yaxis_title="Start Date",
-        height=800,
-        width=1800
-    )
-    fig.update_traces(
-        hovertemplate="<b>Start:</b> %{y}<br><b>End:</b> %{x}<br><b>Forward Vol:</b> %{z:.2f}%<extra></extra>"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # Display ATM IVs
-    st.subheader("ATM IV")
-    
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        # Plot IV across expiries
-        atm_df['dte'] = (atm_df['expiry'] - pd.Timestamp(current_time)).dt.days
-        atm_df['expiry_str'] = atm_df['expiry'].dt.strftime('%m/%d/%y')
-        iv_fig = px.line(
-            atm_df,
-            x='dte',
-            y='atm_iv',
-            markers=True,
-            labels={'dte': 'Days to Expiry', 'atm_iv': 'ATM IV (%)'},
-            title=f"{currency} ATM Implied Volatility Curve"
+        # Display forward volatility matrix
+        st.subheader("Forward Volatility Matrix")
+        display_matrix = forward_matrix.copy()
+        fig = px.imshow(
+            display_matrix,
+            labels=dict(x="End Date", y="Start Date"),
+            color_continuous_scale='Tealrose',
+            color_continuous_midpoint=np.nanmean(display_matrix.values),
+            aspect="auto",
+            text_auto=".2f"
         )
-
-        # Set the line color to your custom color
-        iv_fig.update_traces(
-            hovertemplate="<b>Days to Expiry:</b> %{x}<br><b>ATM IV:</b> %{y:.2f}%<extra></extra>",
-            line=dict(width=2, color='#4adaaf'),  # Change color here
-            marker=dict(size=8, color='#4adaaf')  # Optionally, set marker color
+        fig.update_layout(
+            coloraxis_showscale=False,
+            coloraxis_cmin=np.nanpercentile(display_matrix.values, 5) if not display_matrix.empty else 0,
+            coloraxis_cmax=np.nanpercentile(display_matrix.values, 95) if not display_matrix.empty else 100,
+            hoverlabel=dict(
+                bgcolor="white",
+                font_size=14,
+                font_family="Arial"
+            ),
+            title=f"{currency} Forward Volatility Matrix",
+            xaxis_title="End Date",
+            yaxis_title="Start Date",
+            height=800,
+            width=1800
         )
-
-        iv_fig.update_layout(
-            hoverlabel=dict(bgcolor="white", font_size=14),
-            height=400,
-            showlegend=False
+        fig.update_traces(
+            hovertemplate="<b>Start:</b> %{y}<br><b>End:</b> %{x}<br><b>Forward Vol:</b> %{z:.2f}%<extra></extra>"
         )
-        st.plotly_chart(iv_fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
+        st.divider()
 
-        atm_display = atm_df[['dte', 'expiry_str', 'atm_iv']].rename(columns={
-            'dte': 'Days to Expiry (dte)',
-            'expiry_str': 'Expiration Date',
-            'atm_iv': 'ATM IV (%)'
-        }).round({'ATM IV (%)': 2})
+        # Display ATM IV
+        st.subheader("ATM IV")
+        col1, col2 = st.columns(2)
 
-        # 1. Define your custom colormap
-        custom_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
-            'custom_gradient', ['#009392', '#d0587e']
-        )
+        with col1:
+            atm_df['dte'] = (atm_df['expiry'] - pd.Timestamp(current_time)).dt.days
+            atm_df['expiry_str'] = atm_df['expiry'].dt.strftime('%m/%d/%y')
+            iv_fig = px.line(
+                atm_df,
+                x='dte',
+                y='atm_iv',
+                markers=True,
+                labels={'dte': 'Days to Expiry', 'atm_iv': 'ATM IV (%)'},
+                title=f"{currency} ATM Implied Volatility Curve"
+            )
+            iv_fig.update_traces(
+                hovertemplate="<b>Days to Expiry:</b> %{x}<br><b>ATM IV:</b> %{y:.2f}%<extra></extra>",
+                line=dict(width=2, color='#4adaaf'),
+                marker=dict(size=8, color='#4adaaf')
+            )
+            iv_fig.update_layout(
+                hoverlabel=dict(bgcolor="white", font_size=14),
+                height=400,
+                showlegend=False
+            )
+            st.plotly_chart(iv_fig, use_container_width=True)
 
-        # 2. Apply the custom colormap to your DataFrame style
-        styled_df = atm_display.style.format({'ATM IV (%)': '{:.2f}'}) \
-            .background_gradient(subset=['ATM IV (%)'], cmap=custom_cmap)
-
-        # 3. Display in Streamlit
-        st.table(styled_df)
+        with col2:
+            atm_display = atm_df[['dte', 'expiry_str', 'atm_iv']].rename(columns={
+                'dte': 'Days to Expiry (dte)',
+                'expiry_str': 'Expiration Date',
+                'atm_iv': 'ATM IV (%)'
+            }).round({'ATM IV (%)': 2})
+            custom_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+                'custom_gradient', ['#009392', '#d0587e']
+            )
+            styled_df = atm_display.style.format({'ATM IV (%)': '{:.2f}'}) \
+                .background_gradient(subset=['ATM IV (%)'], cmap=custom_cmap)
+            st.table(styled_df)
 
 # Straddle Prices Page
 elif page == "Straddle Prices":
