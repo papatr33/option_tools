@@ -151,7 +151,7 @@ def create_btc_volatility_chart(start_date, end_date, symbol="BTCUSDT"):
         rows=2,
         cols=1,
         subplot_titles=(
-            "Bitcoin Price (BTC/USDT)",
+            "Spot Price",
             "Garman-Klass Realized Volatility"
         ),
         vertical_spacing=0.1,
@@ -163,7 +163,7 @@ def create_btc_volatility_chart(start_date, end_date, symbol="BTCUSDT"):
         go.Scatter(
             x=df.index,
             y=df["close"],
-            name="BTC Price",
+            name="Price",
             line=dict(color="rgb(31, 119, 180)")
         ),
         row=1,
@@ -221,7 +221,7 @@ def create_btc_volatility_chart(start_date, end_date, symbol="BTCUSDT"):
     # Update layout for main chart
     fig.update_layout(
         height=800,
-        title_text="Bitcoin Price and Realized Volatility",
+        title_text="Price and RV",
         template="plotly_white",
         hovermode="x unified",
         showlegend=True

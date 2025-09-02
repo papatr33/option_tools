@@ -204,13 +204,13 @@ def create_implied_VRP_chart(start_date, end_date, asset="BTC"):
         col=1
     )
 
-    # Add spread trace
+    # Add spread trace as bar
     fig.add_trace(
-        go.Scatter(
+        go.Bar(
             x=merged_df.index,
             y=merged_df["spread"],
             name="IV-RV Spread",
-            line=dict(color="rgb(71, 217, 174)")
+            marker=dict(color="rgb(71, 217, 174)")
         ),
         row=2,
         col=1
@@ -330,11 +330,11 @@ def create_realized_VRP_chart(start_date, end_date, asset="BTC"):
 
     # Add spread trace
     fig.add_trace(
-        go.Scatter(
+        go.Bar(
             x=merged_df.index,
             y=merged_df["spread"],
             name="IV-Future RV Spread",
-            line=dict(color="rgb(0, 213, 255)")
+            marker=dict(color="rgb(0, 213, 255)")
         ),
         row=2,
         col=1
