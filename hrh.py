@@ -37,43 +37,60 @@ def clean_ohlc_data(df):
     print(f"Cleaned data: {len(df)} rows reduced to {len(df_clean)} rows")
     return df_clean
 
-# Function to fetch Binance OHLC data using public API
+# Function to fetch Binance OHLC data using public API with fallback endpoints
 def get_historical_data(symbol, interval, start_date, end_date):
-    url = "https://api.binance.com/api/v3/klines"
+    # List of Binance API endpoints to try
+    endpoints = [
+        "https://api.binance.com/api/v3/klines",
+        "https://api.binance.us/api/v3/klines",
+        "https://data.binance.com/api/v3/klines"
+    ]
+    
     all_data = []
     current_start = start_date
     chunk_size = pd.Timedelta(days=90)  # Fetch 90 days at a time
     
-    while current_start < end_date:
-        chunk_end = min(current_start + chunk_size, end_date)
-        start_ts = int(current_start.timestamp() * 1000)
-        end_ts = int(chunk_end.timestamp() * 1000)
-        params = {
-            "symbol": f"{symbol}USDT",
-            "interval": interval,
-            "startTime": start_ts,
-            "endTime": end_ts,
-            "limit": 1000
-        }
-        try:
-            response = requests.get(url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                if not data:
-                    print(f"No data returned for {symbol}USDT from {current_start} to {chunk_end}")
+    for endpoint in endpoints:
+        print(f"Trying endpoint: {endpoint}")
+        all_data = []
+        current_start = start_date
+        
+        while current_start < end_date:
+            chunk_end = min(current_start + chunk_size, end_date)
+            start_ts = int(current_start.timestamp() * 1000)
+            end_ts = int(chunk_end.timestamp() * 1000)
+            params = {
+                "symbol": f"{symbol}USDT",
+                "interval": interval,
+                "startTime": start_ts,
+                "endTime": end_ts,
+                "limit": 1000
+            }
+            try:
+                response = requests.get(endpoint, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    if not data:
+                        print(f"No data returned for {symbol}USDT from {current_start} to {chunk_end} at {endpoint}")
+                    else:
+                        all_data.extend(data)
+                    current_start = chunk_end + pd.Timedelta(days=1)
+                    time.sleep(1)  # Avoid rate limits
                 else:
-                    all_data.extend(data)
-                current_start = chunk_end + pd.Timedelta(days=1)
-                time.sleep(1)  # Avoid rate limits
-            else:
-                print(f"Binance API error: {response.status_code} for {symbol}USDT")
-                return pd.DataFrame()
-        except requests.RequestException as e:
-            print(f"Error fetching data for {symbol}USDT: {e}")
-            return pd.DataFrame()
+                    print(f"Binance API error: {response.status_code} for {symbol}USDT at {endpoint}")
+                    if response.status_code == 451:
+                        print(f"Geo-restriction detected at {endpoint}. Trying next endpoint...")
+                        break  # Try next endpoint
+                    return pd.DataFrame()
+            except requests.RequestException as e:
+                print(f"Error fetching data for {symbol}USDT at {endpoint}: {e}")
+                break  # Try next endpoint
+        
+        if all_data:
+            break  # Exit loop if data was successfully fetched
     
     if not all_data:
-        print(f"No data returned for {symbol}USDT from {start_date} to {end_date}")
+        print(f"No data returned for {symbol}USDT from {start_date} to {end_date} across all endpoints")
         return pd.DataFrame()
     
     df = pd.DataFrame(
