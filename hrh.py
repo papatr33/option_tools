@@ -201,7 +201,7 @@ def historical_return_histogram(start_date, end_date, return_interval=1, asset='
         fig_2.add_trace(go.Histogram(
             x=df_returns['returns'].dropna(),
             name=f'{return_interval}-Day Returns',
-            nbinsx=30,
+            nbinsx=50,
             opacity=0.7,
             marker_color='skyblue'
         ))
@@ -224,3 +224,4 @@ def historical_return_histogram(start_date, end_date, return_interval=1, asset='
         return None, None
 
     return fig, fig_2
+
