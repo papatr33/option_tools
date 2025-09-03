@@ -1,51 +1,123 @@
 import pandas as pd
 import plotly.graph_objects as go
-from binance.client import Client
+import requests
 from datetime import datetime
 import numpy as np
 
-def historical_return_histogram(start_date, end_date, return_interval = 1, asset = 'BTC'):
-    # Initialize Binance client (no API key needed for public data)
-    # Note: If rate limits are hit, register for an API key at binance.com
-    client = Client()
-   
+# Function to clean OHLC data by dropping rows with outliers
+def clean_ohlc_data(df):
+    """
+    Cleans OHLC data by dropping rows where any OHLC value is over 2x or under 0.5x
+    the median of adjacent points (previous and next day).
+    """
+    df_clean = df.copy()
+    columns_to_check = ["open", "high", "low", "close"]
+    
+    # Initialize a mask for rows to keep (True means keep, False means drop)
+    keep_rows = pd.Series(True, index=df_clean.index)
+    
+    for col in columns_to_check:
+        # Calculate median of previous and next day for each point
+        prev_values = df_clean[col].shift(1)
+        next_values = df_clean[col].shift(-1)
+        median_adjacent = pd.concat([prev_values, next_values], axis=1).median(axis=1)
+        
+        # Identify outliers: >2x or <0.5x the median of adjacent points
+        ratio = df_clean[col] / median_adjacent
+        outliers = (ratio > 2) | (ratio < 0.5)
+        
+        # Update mask: mark rows with outliers to be dropped
+        keep_rows = keep_rows & ~outliers
+    
+    # Drop rows where any column has an outlier
+    df_clean = df_clean[keep_rows]
+    
+    return df_clean
 
-    # Function to fetch historical daily data
-    def get_historical_data(symbol, interval, start_date, end_date):
-        # Convert datetime objects to string format 'YYYY-MM-DD'
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-        
-        # Construct trading pair (e.g., BTCUSDT, ETHUSDT)
-        trading_pair = f"{symbol}USDT"
-        
-        klines = client.get_historical_klines(trading_pair, interval, start_date_str, end_date_str)
-        df = pd.DataFrame(klines, columns=[
-            'timestamp', 'open', 'high', 'low', 'close', 'volume',
-            'close_time', 'quote_asset_volume', 'num_trades',
-            'taker_buy_base_volume', 'taker_buy_quote_volume', 'ignore'
-        ])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df['close'] = df['close'].astype(float)
-        return df[['timestamp', 'close']]
+# Function to fetch Binance OHLC data using public API
+def get_historical_data(symbol, interval, start_date, end_date):
+    url = "https://api.binance.com/api/v3/klines"
+    start_ts = int(start_date.timestamp() * 1000)
+    end_ts = int(end_date.timestamp() * 1000)
+    params = {
+        "symbol": f"{symbol}USDT",
+        "interval": interval,
+        "startTime": start_ts,
+        "endTime": end_ts,
+        "limit": 1000
+    }
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if not data:
+                print(f"No data returned for {symbol}USDT from {start_date} to {end_date}")
+                return pd.DataFrame()
+            df = pd.DataFrame(
+                data,
+                columns=[
+                    "timestamp", "open", "high", "low", "close", "volume",
+                    "close_time", "quote_asset_volume", "num_trades",
+                    "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "ignore"
+                ]
+            )
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+            df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+            
+            # Clean the OHLC data
+            df = clean_ohlc_data(df)
+            
+            return df[["timestamp", "close"]]
+        else:
+            print(f"Binance API error: {response.status_code}")
+            return pd.DataFrame()
+    except requests.RequestException as e:
+        print(f"Error fetching data: {e}")
+        return pd.DataFrame()
+
+def historical_return_histogram(start_date, end_date, return_interval=1, asset='BTC'):
+    # Validate inputs
+    if not isinstance(start_date, datetime) or not isinstance(end_date, datetime):
+        raise ValueError("start_date and end_date must be datetime objects")
+    if not isinstance(return_interval, int) or return_interval < 1:
+        raise ValueError("return_interval must be a positive integer")
+    if asset not in ['BTC', 'ETH', 'BNB']:  # Add more valid assets as needed
+        raise ValueError(f"Unsupported asset: {asset}")
+
+    # Fetch Bitcoin daily data
+    df = get_historical_data(asset, "1d", start_date, end_date)
+    
+    # Check if data is empty
+    if df.empty:
+        print("No valid data available after fetching and cleaning.")
+        return None, None
 
     # Function to calculate n-day returns
     def calculate_interval_returns(df, interval):
-        # Keep every nth row for the specified interval
+        if df.empty or len(df) < 2:
+            print("Insufficient data points to calculate returns (need at least 2).")
+            return pd.DataFrame()
         df_interval = df.iloc[::interval].copy()
-        # Calculate returns based on close prices
         df_interval['returns'] = df_interval['close'].pct_change() * 100  # Returns in percentage
+        if df_interval['returns'].dropna().empty:
+            print("All returns are NaN after calculation.")
+            return pd.DataFrame()
         return df_interval
-
-    # Fetch Bitcoin daily data (BTCUSDT)
-    df = get_historical_data(asset, Client.KLINE_INTERVAL_1DAY, start_date, end_date)
 
     # Calculate returns for the specified interval
     df_returns = calculate_interval_returns(df, return_interval)
+    
+    # Check if returns data is valid
+    if df_returns.empty:
+        print("No valid returns data available.")
+        return None, None
 
     # Calculate standard deviations
     mean_return = df_returns['returns'].mean()
     std_return = df_returns['returns'].std()
+    if np.isnan(mean_return) or np.isnan(std_return):
+        print("Invalid statistical data (NaN in mean or std).")
+        return None, None
     sd1_upper = mean_return + std_return
     sd1_lower = mean_return - std_return
     sd2_upper = mean_return + 2 * std_return
@@ -82,13 +154,13 @@ def historical_return_histogram(start_date, end_date, return_interval = 1, asset
 
     # Update layout
     fig.update_layout(
-        title=f'Bitcoin {return_interval}-Day Returns',
+        title=f'{asset} {return_interval}-Day Returns',
         xaxis_title='Date',
         yaxis_title=f'{return_interval}-Day Return (%)',
         template='plotly_white',
         showlegend=True,
-        width = 1400,
-        height = 600
+        width=1400,
+        height=600
     )
 
     # Create Plotly figure for histogram
@@ -111,14 +183,14 @@ def historical_return_histogram(start_date, end_date, return_interval = 1, asset
 
     # Update layout
     fig_2.update_layout(
-        title=f'Histogram of Bitcoin {return_interval}-Day Returns ({start_date} to {end_date})',
+        title=f'Histogram of {asset} {return_interval}-Day Returns ({start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")})',
         xaxis_title=f'{return_interval}-Day Return (%)',
         yaxis_title='Frequency',
         template='plotly_white',
         showlegend=True,
         bargap=0.1,
-        width = 1400,
-        height = 600
+        width=1400,
+        height=600
     )
 
     return fig, fig_2
