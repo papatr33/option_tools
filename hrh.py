@@ -115,8 +115,8 @@ def historical_return_histogram(start_date, end_date, return_interval=1, asset='
         raise ValueError("start_date and end_date must be datetime objects")
     if not isinstance(return_interval, int) or return_interval < 1:
         raise ValueError("return_interval must be a positive integer")
-    if asset not in ['BTC', 'ETH', 'BNB']:  # Add more valid assets as needed
-        raise ValueError(f"Unsupported asset: {asset}")
+    # if asset not in ['BTC', 'ETH', 'BNB']:  # Add more valid assets as needed
+        # raise ValueError(f"Unsupported asset: {asset}")
 
     # Fetch Bitcoin daily data
     df = get_historical_data(asset, "1d", start_date, end_date)
@@ -224,4 +224,5 @@ def historical_return_histogram(start_date, end_date, return_interval=1, asset='
         return None, None
 
     return fig, fig_2
+
 
