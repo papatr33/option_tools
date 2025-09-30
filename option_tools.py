@@ -9,7 +9,7 @@ from straddle_prices import fetch_straddle_prices
 from vrp import create_implied_VRP_chart, create_realized_VRP_chart, create_iv_rv_scatter_plot
 from corr import plot_btc_altcoin_correlations, plot_btc_financial_correlations
 from spot_vol import calculate_spot_vol_correlation
-from rv import create_btc_volatility_chart
+from rv import create_btc_volatility_chart, rv_table, create_rv_range_plot
 from session_return import calculate_session_returns_and_volatility
 from open_interest import get_deribit_options_data, process_options_data, create_bubble_chart
 from hrh import historical_return_histogram
@@ -24,7 +24,7 @@ st.title("watermelon 🍉")
 
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Functions", ["Calculator", "Forward Volatility", "RV", "Straddle Prices","VRP","Correlation Heatmap","Spot Vol Correlation","Session Return","Open Interest", "HRH"])
+page = st.sidebar.selectbox("Functions", ["Calculator", "Forward Volatility", "RV","RV Range", "Straddle Prices","VRP","Correlation Heatmap","Spot Vol Correlation","Session Return","Open Interest", "HRH"])
 
 # Forward Volatility Page
 if page == "Forward Volatility":
@@ -281,6 +281,7 @@ elif page == "RV":
     st.divider()
 
     st.plotly_chart(table_fig)
+
 
 elif page == "Session Return":
 
@@ -746,4 +747,41 @@ elif page == "Calculator":
                 }
             )
 
+elif page == "RV Range":
+    st.subheader("7-Day RV Historical Range")
+    st.markdown("This chart displays the current 7-day realized volatility (RV) compared to its historical high-low ranges over the past 20 and 60 days.")
 
+    all_symbols = ["BTC", "ETH", "SOL", "BNB", "HYPE", "XRP", "DOGE", "SUI", "VIRTUAL", "TRUMP", "ENA"]
+    selected_symbols = st.multiselect(
+        "Select currencies to plot", 
+        options=all_symbols, 
+        default=["BTC", "ETH", "SOL", "BNB"]
+    )
+    
+    if st.button("Generate Plot"):
+        if not selected_symbols:
+            st.warning("Please select at least one currency.")
+        else:
+            with st.spinner("Fetching data and generating plot... This may take a moment."):
+                fig_rv_range = create_rv_range_plot(symbols=selected_symbols)
+                st.plotly_chart(fig_rv_range, use_container_width=True)
+    
+    # ADD THE FOLLOWING CODE TO DISPLAY THE STYLED TABLE
+    st.divider()
+    st.subheader("Realized Volatility Summary")
+
+    with st.spinner("Loading RV summary table..."):
+        df_rv = rv_table()
+        if not df_rv.empty:
+            vol_cols = [col for col in df_rv.columns if 'Vol' in col]
+
+            # Apply numerical formatting directly to the DataFrame
+            df_display = df_rv.copy()
+            df_display['Spot Price'] = df_display['Spot Price'].apply(lambda x: f'${x:,.2f}')
+            for col in vol_cols:
+                df_display[col] = df_display[col].apply(lambda x: f'{x:.2%}')
+            
+            # Display the dataframe without any custom styling
+            st.dataframe(df_display, use_container_width=True, height=320)
+        else:
+            st.warning("Could not fetch data for the RV summary table.")
