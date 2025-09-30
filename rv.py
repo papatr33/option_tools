@@ -52,7 +52,7 @@ def get_binance_hourly_data(symbol, start_date, end_date, max_retries=5):
     start_date = start_date.replace(tzinfo=None)
     end_date = end_date.replace(tzinfo=None)
 
-    url = "https://api.binance.com/api/v3/klines"
+    url = "https://api.binance.us/api/v3/klines"
     all_data = []
     current_start = start_date
 
@@ -436,3 +436,4 @@ def create_rv_range_plot(symbols=["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"]):
     )
 
     return fig
+
