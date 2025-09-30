@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta, date
 import math
+import time # Import the time module for sleep
 
 def clean_ohlc_data(df):
     """
@@ -36,10 +37,10 @@ def clean_ohlc_data(df):
     return df_clean
 
 
-def get_binance_hourly_data(symbol, start_date, end_date):
+def get_binance_hourly_data(symbol, start_date, end_date, max_retries=5):
     """
     Fetches hourly OHLC data from Binance API for given symbol and date range.
-    Handles pagination for large date ranges and includes detailed error handling.
+    Handles pagination for large date ranges and includes detailed error handling with retries.
     """
     # Convert date objects to datetime if necessary
     if isinstance(start_date, date) and not isinstance(start_date, datetime):
@@ -60,6 +61,7 @@ def get_binance_hourly_data(symbol, start_date, end_date):
         # Binance API limit is 1000 candles per request
         end_ts = min(int((current_start + timedelta(days=41)).timestamp() * 1000), 
                      int(end_date.timestamp() * 1000))
+        
         params = {
             "symbol": symbol.upper(),
             "interval": "1h",
@@ -67,20 +69,38 @@ def get_binance_hourly_data(symbol, start_date, end_date):
             "endTime": end_ts,
             "limit": 1000
         }
-        try:
-            response = requests.get(url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                if not data:
-                    break
-                all_data.extend(data)
-                last_timestamp = int(data[-1][0])
-                current_start = datetime.fromtimestamp(last_timestamp / 1000) + timedelta(hours=1)
-            else:
-                error_msg = response.json().get('msg', 'No error message provided')
-                raise Exception(f"Binance API error {response.status_code} for {symbol}: {error_msg}")
-        except requests.RequestException as e:
-            raise Exception(f"Network error for {symbol}: {str(e)}")
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(url, params=params, timeout=10) # Add timeout
+                if response.status_code == 200:
+                    data = response.json()
+                    if not data:
+                        break # No more data
+                    all_data.extend(data)
+                    last_timestamp = int(data[-1][0])
+                    current_start = datetime.fromtimestamp(last_timestamp / 1000) + timedelta(hours=1)
+                    break # Success, break retry loop
+                elif response.status_code in [429, 500, 502, 503, 504]: # Rate limit or server error
+                    error_msg = response.json().get('msg', 'No error message provided')
+                    print(f"Attempt {attempt + 1}: Binance API rate limit or server error {response.status_code} for {symbol}: {error_msg}. Retrying in {2**attempt} seconds...")
+                    time.sleep(2**attempt) # Exponential backoff
+                else:
+                    error_msg = response.json().get('msg', 'No error message provided')
+                    raise Exception(f"Binance API error {response.status_code} for {symbol}: {error_msg}")
+            except requests.exceptions.Timeout:
+                print(f"Attempt {attempt + 1}: Request timed out for {symbol}. Retrying in {2**attempt} seconds...")
+                time.sleep(2**attempt)
+            except requests.RequestException as e:
+                print(f"Attempt {attempt + 1}: Network error for {symbol}: {str(e)}. Retrying in {2**attempt} seconds...")
+                time.sleep(2**attempt)
+            except Exception as e:
+                # Catch other potential exceptions during JSON parsing or data handling
+                print(f"Attempt {attempt + 1}: An unexpected error occurred for {symbol}: {str(e)}. Retrying in {2**attempt} seconds...")
+                time.sleep(2**attempt)
+        else:
+            # If all retries fail
+            raise Exception(f"Failed to fetch Binance data for {symbol} after {max_retries} attempts.")
 
     if not all_data:
         return pd.DataFrame()
