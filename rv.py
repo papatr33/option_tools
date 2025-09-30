@@ -231,5 +231,46 @@ def create_btc_volatility_chart(start_date, end_date, symbol="BTCUSDT"):
     fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
     fig.update_yaxes(title_text="Volatility", tickformat=".0%", row=2, col=1)
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    
+
+def rv_table():
+    assets = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'HYPE']
+    periods = [7, 14, 30, 60]
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=90)
+
+    data = []
+    for asset in assets:
+        symbol = f"{asset}USDT"
+
+        df = get_binance_hourly_data(symbol, start_date, end_date)
+            
+        # Get spot price (latest close)
+        spot = df['close'].iloc[-1]
+        
+        row = {'Asset': asset, 'Spot Price': spot}
+        for p in periods:
+            # Current volatility
+            vol = garman_klass_volatility(df, window=p, trading_periods=365, clean=True)
+            latest_vol = vol.iloc[-1] * 100 if not vol.empty else None  # Convert to percentage
+            
+            # Volatility from one week ago
+            one_week_ago = df.index[-1] - timedelta(days=7)
+            past_df = df[df.index <= one_week_ago]
+            if len(past_df) >= p:
+                past_vol = garman_klass_volatility(past_df, window=p, trading_periods=365, clean=True)
+                past_vol_value = past_vol.iloc[-1] * 100 if not past_vol.empty else None
+            else:
+                past_vol_value = None
+                
+            row[f'{p}d Vol'] = latest_vol
+            row[f'{p}d Vol 1w Ago'] = past_vol_value
+        
+        data.append(row)
+
+    if data:
+        df_display = pd.DataFrame(data)
+        df_display = df_display.round(2)
+
+    return df_display
+
     return fig, table_fig
