@@ -232,6 +232,8 @@ def create_btc_volatility_chart(start_date, end_date, symbol="BTCUSDT"):
     fig.update_yaxes(title_text="Volatility", tickformat=".0%", row=2, col=1)
     fig.update_xaxes(title_text="Date", row=2, col=1)
 
+    return fig, table_fig    
+
 def rv_table():
     assets = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'HYPE']
     periods = [7, 14, 30, 60]
@@ -273,4 +275,5 @@ def rv_table():
 
     return df_display
 
-    return fig, table_fig
+    
+
