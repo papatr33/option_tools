@@ -258,7 +258,7 @@ elif page == "RV":
     with col1:
         currency = st.selectbox("Select Currency", ["BTC", "ETH","SOL", "XRP", "HYPE","SUI", "VIRTUAL","TRUMP","ENA"], key="currency_selector")
 
-    symbol = currency+"USDT"
+    symbol = currency+"USDT.P"
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -785,3 +785,4 @@ elif page == "RV Range":
             st.dataframe(df_display, use_container_width=True, height=320)
         else:
             st.warning("Could not fetch data for the RV summary table.")
+
